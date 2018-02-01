@@ -80,23 +80,23 @@ int main(int argc, char *argv[])
     }
     printf("File Request approved.\n\n");
 
-    /*
-    int fWrite = open("testrcv.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    //File sending.
+    int fWrite = open(argv[3], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fWrite < 0) error("File creation error.");
 
-    while (1)
-        {
-            n = recvfrom(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from, &length);
-            decode(buffer, &p);
-            if (p.type == TERM) break;
-            printf("Got data.");
-            write(fWrite, p.data, (n - META_SIZE));
-            memset(buffer, 0, PACKET_SIZE);
-            p.type = ACK;
-            p.seq_no = 0;
-            encode(buffer, &p);
-            n = sendto(sock,buffer,PACKET_SIZE,0,(const struct sockaddr *)&server,length);
-        }
-    */
+    while (1){
+        n = recvfrom(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from, &length);
+        decode(buffer, &p);
+        if (p.type == TERM) break;
+        //printf("Got data.");
+        write(fWrite, p.data, (n - META_SIZE));
+        memset(buffer, 0, PACKET_SIZE);
+        p.type = ACK;
+        p.seq_no += 1;
+        encode(buffer, &p);
+        n = sendto(sock,buffer,PACKET_SIZE,0,(const struct sockaddr *)&server,length);
+    }
+    
     close(sock);
     return 0;
 }

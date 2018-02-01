@@ -85,28 +85,30 @@ int main(int argc, char *argv[])
     encode(buffer, &p);
     n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
        
-    /*    
-    int fRead = open("test.txt", 'r');
+    //File send.    
+    int fRead = open("./serverFS/test.txt", 'r');
+    if (fRead < 0) error("File not found.");
+
     while(1) {
-        bytesRecvd = recvfrom(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, &fromlen);
-        decode (buffer, &p);
-
-        if (p.type == ACK && (bytesRecvd > 0)) {
-            n = read(fRead, p.data, MAX_DATA);
-            if (n < 1){
-                p.type = TERM;
-                p.seq_no = 0;
-                encode(buffer, &p);
-                n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen); 
-                break;
-            }
-            printf("Got ACK.");
-            p.type = DATA;
-            p.seq_no = 0;
+        n = read(fRead, p.data, MAX_DATA);
+        if (n < 1){
+            p.type = TERM;
+            p.seq_no += 1;
+            memset(buffer, 0, MAX_DATA);
             encode(buffer, &p);
-            n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
+            n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen); 
+            break;
         }
+        p.type = DATA;
+        p.seq_no += 1;
+        encode(buffer, &p);
+        n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
 
-    }*/
+        while (1) {
+            n = recvfrom(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from, &length);
+            decode(buffer, &p);
+            if (p.type == ACK) break;
+        }
+    }
     return 0;
  }
