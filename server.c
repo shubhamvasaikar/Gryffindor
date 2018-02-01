@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
     printf("File request accepted.\n\n");
     p.type = FILE_REQ_ACK;
     p.seq_no += 1;
+    p.length = 0;
     encode(buffer, &p);
     n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
        
@@ -92,9 +93,10 @@ int main(int argc, char *argv[])
 
     while(1) {
         bytesRead = read(fRead, p.data, MAX_DATA);
-        if (n < 1){
+        if (bytesRead < 1){
             p.type = TERM;
             p.seq_no += 1;
+            p.length = 0;
             memset(buffer, 0, MAX_DATA);
             encode(buffer, &p);
             n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen); 
@@ -102,6 +104,7 @@ int main(int argc, char *argv[])
         }
         p.type = DATA;
         p.seq_no += 1;
+        p.length = bytesRead;
         encode(buffer, &p);
         n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
 
