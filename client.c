@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
     printf("Sending File name.\n");
     p.type = FILE_REQ;
     p.seq_no += 1;
+    p.length = sizeof(argv[3]);
     encode(buffer, &p);
     encodeFilename(buffer, argv[3]);
     n = sendto(sock,buffer,PACKET_SIZE,0,(const struct sockaddr *)&server,length);
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
         decode(buffer, &p);
         if (p.type == TERM) break;
         //printf("Got data.");
-        write(fWrite, p.data, (n - META_SIZE));
+        write(fWrite, p.data, p.length);
         memset(buffer, 0, PACKET_SIZE);
         p.type = ACK;
         p.seq_no += 1;

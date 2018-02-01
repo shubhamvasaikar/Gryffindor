@@ -24,10 +24,11 @@ int main(int argc, char *argv[])
     struct sockaddr_in server;       //server - server address structure
     struct sockaddr_in from;         //from - client  address structure
     uint8_t buffer[PACKET_SIZE];                 // buf is buffer
-    int bytesRecvd = 0;
+    int bytesRead = 0;
     char filename[256];
 
     packet_t p;
+    p.length = 0;
 
     if (argc < 2) {
         fprintf(stderr, "ERROR, no port provided\n");
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
     if (fRead < 0) error("File not found.");
 
     while(1) {
-        n = read(fRead, p.data, MAX_DATA);
+        bytesRead = read(fRead, p.data, MAX_DATA);
         if (n < 1){
             p.type = TERM;
             p.seq_no += 1;
