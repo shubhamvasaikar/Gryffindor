@@ -26,10 +26,11 @@ int main(int argc, char *argv[])
     uint8_t buffer[PACKET_SIZE];                 // buf is buffer
     int bytesRead = 0;
     char filename[256];
+    int retries = 0;
 
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 100000;
+    timeout.tv_usec = 0;
 
     packet_t p;
     p.length = 0;
@@ -58,78 +59,88 @@ int main(int argc, char *argv[])
    
     //initializing the size for the client address struct
     fromlen = sizeof(struct sockaddr_in);
-   
-    //Listen and accept for connections.
-    printf("Listening for connection.\n");
-    //recvFrom(sockfd, *buffer, size_t length of buff, flags, source address struct, address length) 'n' will have message/packet-length
-    while (1) {
-        n = recvfrom(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, &fromlen);
-        if (n < 0) printf("Connection failed.");
-        decode (buffer, &p);
-        if (p.type == REQ) break;
-    }
-    printf("Accepting Connection.\n\n");
-    p.type = ACK;
-    p.seq_no += 1;
-    encode(buffer, &p);
-    n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
-
-    //Accept File request.
-    printf("Waiting for file request.\n");
-    while (1) {
-        n = recvfrom(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, &fromlen);
-        if (n < 0) printf("Connection failed.");
-        decode (buffer, &p);
-        if (p.type == FILE_REQ) break;
-    }
-    decodeFilename(buffer, filename);
-    printf("Filename: %s\n", filename);
-    if (access(filename, F_OK) != -1) {
-        p.type = FILE_REQ_ACK;
-        printf("File request accepted.\n\n");
-        p.seq_no += 1;
-        p.length = 0;
-        encode(buffer, &p);
-        n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
-    }
-    else {
-        p.type = FILE_ERR;
-        p.seq_no += 1;
-        p.length = 0;
-        encode(buffer, &p);
-        n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
-        error("File error.");
-    }
-       
-    //File send.    
-    int fRead = open(filename, 'r');
-    if (fRead < 0) error("File not found.");
-
-    setsockopt(sock,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
-
+    
     while(1) {
-        bytesRead = read(fRead, p.data, MAX_DATA);
-        if (bytesRead < 1){
-            p.type = TERM;
+        retries = 0;
+        timeout.tv_usec = 0;
+        setsockopt(sock,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
+
+        //Listen and accept for connections.
+        printf("Listening for connection.\n");
+        //recvFrom(sockfd, *buffer, size_t length of buff, flags, source address struct, address length) 'n' will have message/packet-length
+        while (1) {
+            n = recvfrom(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, &fromlen);
+            if (n < 0) printf("Connection failed.");
+            decode (buffer, &p);
+            if (p.type == REQ) break;
+        }
+        printf("Accepting Connection.\n\n");
+        p.type = ACK;
+        p.seq_no += 1;
+        encode(buffer, &p);
+        n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
+
+        //Accept File request.
+        printf("Waiting for file request.\n");
+        while (1) {
+            n = recvfrom(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, &fromlen);
+            if (n < 0) printf("Connection failed.");
+            decode (buffer, &p);
+            if (p.type == FILE_REQ) break;
+        }
+        decodeFilename(buffer, filename);
+        printf("Filename: %s\n", filename);
+        if (access(filename, F_OK) != -1) {
+            p.type = FILE_REQ_ACK;
+            printf("File request accepted.\n\n");
             p.seq_no += 1;
             p.length = 0;
-            memset(buffer, 0, MAX_DATA);
             encode(buffer, &p);
-            n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen); 
-            break;
+            n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
         }
-        p.type = DATA;
-        p.seq_no += 1;
-        p.length = bytesRead;
-        encode(buffer, &p);
-        //n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
+        else {
+            p.type = FILE_ERR;
+            p.seq_no += 1;
+            p.length = 0;
+            encode(buffer, &p);
+            n = sendto(sock, buffer, PACKET_SIZE, 0, (struct sockaddr *)&from, fromlen);
+            printf("File error.\n\n");
+            continue;
+        }
+        
+        //File send.    
+        int fRead = open(filename, 'r');
+        if (fRead < 0) error("File not found.");
 
-        while (1) {
-            n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
-            n = recvfrom(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from, &length);
-            if (n < 0) continue;
-            decode(buffer, &p);
-            if (p.type == ACK) break;
+        timeout.tv_usec = 100000; //100ms timeout before retransmission.
+        setsockopt(sock,SOL_SOCKET,SO_RCVTIMEO,&timeout,sizeof(timeout));
+
+        while(1) {
+            bytesRead = read(fRead, p.data, MAX_DATA);
+            if (bytesRead < 1){
+                p.type = TERM;
+                p.seq_no += 1;
+                p.length = 0;
+                memset(buffer, 0, MAX_DATA);
+                encode(buffer, &p);
+                n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
+                printf("No. of retries: %d\n\n", (retries - (p.seq_no - 4))); 
+                break;
+            }
+            p.type = DATA;
+            p.seq_no += 1;
+            p.length = bytesRead;
+            encode(buffer, &p);
+            //n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
+
+            while (1) {
+                retries += 1;
+                n = sendto(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from,fromlen);
+                n = recvfrom(sock,buffer,PACKET_SIZE,0,(struct sockaddr *)&from, &length);
+                if (n < 0) continue;
+                decode(buffer, &p);
+                if (p.type == ACK) break;
+            }
         }
     }
     return 0;
