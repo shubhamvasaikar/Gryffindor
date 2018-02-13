@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
         //Uncommenting the next line will cause 
         //the client to drop every 100th packet.
         //Use this to test retransmission.
-        if (p.seq_no % 100 == 0) (flag == 1) ? (flag = 0) : (flag = 1);
+        //if (p.seq_no % 100 == 0) (flag == 1) ? (flag = 0) : (flag = 1);
         
         if (p.type == TERM) break;
 
