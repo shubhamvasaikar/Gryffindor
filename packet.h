@@ -5,6 +5,7 @@ typedef enum {
     REQ,
     ACK,
     FILE_REQ,
+    FILE_ERR,
     FILE_REQ_ACK,
     DATA,
     DATA_ACK,
@@ -39,13 +40,14 @@ void decode(uint8_t *buffer, packet_t *packet) {
 }
 
 void encodeFilename(uint8_t *buffer, char *filename) {
-    uint8_t len = (uint8_t) sizeof(filename);
+    uint8_t len = (uint8_t) strlen(filename);
+    len += 1;
     memcpy(buffer + LENGTH_OFFSET, &len, sizeof(uint8_t));
     memcpy(buffer + DATA_OFFSET, filename, strlen(filename));
 }
 
 void decodeFilename(uint8_t *buffer, char *filename) {
     uint8_t len = 0;
-    memcpy(&len, buffer + LENGTH_OFFSET, 1);
-    memcpy(filename, buffer + DATA_OFFSET + 1, len);
+    memcpy(&len, buffer + LENGTH_OFFSET, sizeof(uint8_t));
+    memcpy(filename, buffer + DATA_OFFSET, len);
 }

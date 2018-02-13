@@ -1,10 +1,10 @@
 main: server client
 
-client: ./client.c ./packet.h
-	gcc -g client.c -o client
+client: ./client/client.c ./packet.h
+	gcc -g ./client/client.c -o ./client/client.o
 
-server: ./server.c ./packet.h
-	gcc -g server.c -o server
+server: ./server/server.c ./packet.h
+	gcc -g ./server/server.c -o ./server/server.o
 
 clean:
-	rm client server
+	rm ./client/client.o ./server/server.o
