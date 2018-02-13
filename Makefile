@@ -7,4 +7,4 @@ server: ./server/server.c ./packet.h
 	gcc -g ./server/server.c -o ./server/server.o
 
 clean:
-	rm ./client/client.o ./server/server.o
+	rm ./client/client.o ./client/*.txt ./server/server.o
