@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <libgen.h>
 #include "../packet.h"
 
 
@@ -90,7 +91,7 @@ int main(int argc, char *argv[])
     printf("File Request approved.\n\n");
 
     //File sending.
-    int fWrite = open(argv[3], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fWrite = open(basename(argv[3]), O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fWrite < 0) error("File creation error.");
 
     int flag = 1;
